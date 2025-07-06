@@ -125,6 +125,7 @@ const InsightCard = ({
           <>
             <Typography 
               variant="body"
+              markdown={true}
               style={styles.contentText}
             >
               {displayContent}
@@ -243,7 +244,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap', // Enable text wrapping
   },
   content: {
-    marginLeft: theme.spacing.xsmall,
+    marginLeft: theme.spacing.small,
     // Remove any fixed height constraints
   },
   contentText: {

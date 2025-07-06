@@ -378,8 +378,6 @@ Add an Evaluation Summary Card at the start, with a summary of the overall perfo
 - Avoid clustering which creates cognitive load
 
 **Coach Quotations**
-Instead of blockquotes which aren't rendered correctly, use:
-"Your weight transfer timing is the key to distance" - Coach Wilson 🏆
 
 **Paragraph Structure**
 - Keep paragraphs under 3 lines for optimal mobile consumption
