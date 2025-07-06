@@ -1,6 +1,6 @@
 // src/screens/HomeScreen.js
 import React, { useState, useEffect, useContext } from "react";
-import { View, ActivityIndicator, StyleSheet, ScrollView } from "react-native";
+import { View, ActivityIndicator, StyleSheet, ScrollView, RefreshControl } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Layout from "../ui/Layout";
 import theme from "../ui/theme";
@@ -24,6 +24,7 @@ export default function HomeScreen({ navigation }) {
   const { user, hasPermission } = useContext(AuthContext);
   const [recentRounds, setRecentRounds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   
   // Insights state for monetization surface
   const [insightsSummary, setInsightsSummary] = useState(null);
@@ -32,107 +33,99 @@ export default function HomeScreen({ navigation }) {
   // Determine premium status for conversion opportunities
   const hasPremiumAccess = hasPermission("product_a");
 
-  // Fetch recent rounds when component mounts
-  useEffect(() => {
-    async function fetchRecentRounds() {
-      if (!user) return;
-      
-      try {
-        setLoading(true);
-        
-        // Fetch rounds including score and gross_shots if they exist
-        const { data, error } = await supabase
-          .from("rounds")
-          .select(`
-            id, 
-            profile_id,
-            course_id,
-            created_at,
-            score,
-            gross_shots,
-            is_complete
-          `)
-          .eq("profile_id", user.id)
-          .eq("is_complete", true) // Only get completed rounds
-          .order("created_at", { ascending: false })
-          .limit(5);
-          
-        if (error) {
-          console.error("Error fetching rounds:", error);
-          throw error;
-        }
-        
-        if (data && data.length > 0) {
-          // Get course information
-          const courseIds = data.map(round => round.course_id);
-          const { data: coursesData, error: coursesError } = await supabase
-            .from("courses")
-            .select("id, name")
-            .in("id", courseIds);
-            
-          if (coursesError) {
-            console.error("Error fetching courses:", coursesError);
-          }
-          
-          // Map courses to rounds
-          const coursesById = {};
-          if (coursesData) {
-            coursesData.forEach(course => {
-              coursesById[course.id] = course;
-            });
-          }
-          
-          // Format data for display
-          const formattedRounds = data.map(round => ({
-            id: round.id,
-            date: round.created_at,
-            courseName: coursesById[round.course_id] ? coursesById[round.course_id].name : "Unknown Course",
-            score: round.score,
-            grossShots: round.gross_shots,
-            isComplete: round.is_complete
-          }));
-          
-          setRecentRounds(formattedRounds);
-        } else {
-          setRecentRounds([]);
-        }
-      } catch (error) {
-        console.error("Error in fetchRecentRounds:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
+  // Unified fetch function for both rounds and insights
+  const fetchHomeData = async () => {
+    if (!user) return;
     
-    fetchRecentRounds();
-  }, [user]);
-
-  // Fetch insights summary - monetization content
-  useEffect(() => {
-    async function fetchInsightsSummary() {
-      if (!user) return;
-      
-      try {
-        setInsightsLoading(true);
+    try {
+      // Fetch recent rounds
+      const { data, error } = await supabase
+        .from("rounds")
+        .select(`
+          id, 
+          profile_id,
+          course_id,
+          created_at,
+          score,
+          gross_shots,
+          is_complete
+        `)
+        .eq("profile_id", user.id)
+        .eq("is_complete", true) // Only get completed rounds
+        .order("created_at", { ascending: false })
+        .limit(5);
         
-        // Use our service function to get just the summary
+      if (error) {
+        console.error("Error fetching rounds:", error);
+        throw error;
+      }
+      
+      if (data && data.length > 0) {
+        // Get course information
+        const courseIds = data.map(round => round.course_id);
+        const { data: coursesData, error: coursesError } = await supabase
+          .from("courses")
+          .select("id, name")
+          .in("id", courseIds);
+          
+        if (coursesError) {
+          console.error("Error fetching courses:", coursesError);
+        }
+        
+        // Map courses to rounds
+        const coursesById = {};
+        if (coursesData) {
+          coursesData.forEach(course => {
+            coursesById[course.id] = course;
+          });
+        }
+        
+        // Format data for display
+        const formattedRounds = data.map(round => ({
+          id: round.id,
+          date: round.created_at,
+          courseName: coursesById[round.course_id] ? coursesById[round.course_id].name : "Unknown Course",
+          score: round.score,
+          grossShots: round.gross_shots,
+          isComplete: round.is_complete
+        }));
+        
+        setRecentRounds(formattedRounds);
+      } else {
+        setRecentRounds([]);
+      }
+      
+      // Fetch insights summary
+      try {
         const summary = await getLatestInsights(user.id, 'summary');
         console.log("Fetched insights summary:", summary);
-        
-        // Update state with the summary text
         setInsightsSummary(summary);
       } catch (error) {
         console.error("Error fetching insights summary:", error);
-        // Set to null on error so we show the empty state
         setInsightsSummary(null);
-      } finally {
-        setInsightsLoading(false);
       }
+      
+    } catch (error) {
+      console.error("Error in fetchHomeData:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+      setInsightsLoading(false);
     }
-    
-    fetchInsightsSummary();
+  };
+
+  // Load data when component mounts
+  useEffect(() => {
+    fetchHomeData();
   }, [user]);
   
-  // Refresh insights data
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchHomeData();
+  };
+  
+  // Refresh insights data for premium users
   const refreshInsights = async () => {
     if (!user) return;
     
@@ -158,6 +151,13 @@ export default function HomeScreen({ navigation }) {
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={true}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+          />
+        }
       >
         <View style={styles.container}>
           {/* Primary Monetization Surface: Insights Card */}

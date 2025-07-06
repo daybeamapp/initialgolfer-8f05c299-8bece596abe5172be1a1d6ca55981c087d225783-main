@@ -9,7 +9,8 @@ import {
   Keyboard,
   Platform,
   Alert,
-  Linking
+  Linking,
+  RefreshControl
 } from "react-native";
 import { AuthContext } from "../context/AuthContext";
 import { supabase } from "../services/supabase";
@@ -262,37 +263,47 @@ export default function ProfileScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null); // 'success', 'error', or null
   const [validationErrors, setValidationErrors] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
   
+  // Load user profile data
+  const loadUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('handicap, target_handicap')
+        .eq('id', user.id)
+        .single();
+        
+      if (error) throw error;
+      
+      // Format handicaps properly for display
+      if (data) {
+        if (data.handicap !== null) {
+          setHandicap(data.handicap.toString());
+        }
+        if (data.target_handicap !== null) {
+          setTargetHandicap(data.target_handicap.toString());
+        }
+      }
+    } catch (error) {
+      console.error("Error loading profile data:", error.message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // Load user profile data on mount
   useEffect(() => {
-    const loadUserProfile = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('handicap, target_handicap')
-          .eq('id', user.id)
-          .single();
-          
-        if (error) throw error;
-        
-        // Format handicaps properly for display
-        if (data) {
-          if (data.handicap !== null) {
-            setHandicap(data.handicap.toString());
-          }
-          if (data.target_handicap !== null) {
-            setTargetHandicap(data.target_handicap.toString());
-          }
-        }
-      } catch (error) {
-        console.error("Error loading profile data:", error.message);
-      }
-    };
-    
     loadUserProfile();
   }, [user]);
+
+  // Handle pull-to-refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadUserProfile();
+  };
   
   // Validation function for target handicap
   const validateTargetHandicap = useCallback((current, target) => {
@@ -423,7 +434,16 @@ export default function ProfileScreen() {
     <Layout>
       {/* Dismiss keyboard on container tap */}
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView contentContainerStyle={styles.container}>
+        <ScrollView 
+          contentContainerStyle={styles.container}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.primary]}
+            />
+          }
+        >
           {/* User Information Section */}
           <View style={styles.userInfoSection}>
             <Typography variant="subtitle" style={styles.sectionTitle}>
