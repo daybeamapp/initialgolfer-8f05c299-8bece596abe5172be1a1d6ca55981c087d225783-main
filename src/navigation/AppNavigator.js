@@ -2,6 +2,7 @@
 
 import React, { useContext } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
+import { View, ActivityIndicator } from "react-native";
 import AuthScreen from "../screens/AuthScreen";
 import VerificationPendingScreen from "../screens/VerificationPendingScreen";
 import MainNavigator from "./MainNavigator";
@@ -12,8 +13,17 @@ import { AuthContext } from "../context/AuthContext";
 const Stack = createStackNavigator();
 
 export default function AppNavigator() {
-  // Retrieve both user and verification status from AuthContext
-  const { user, emailVerified } = useContext(AuthContext);
+  // Retrieve user, verification status, and loading state from AuthContext
+  const { user, emailVerified, loading } = useContext(AuthContext);
+
+  // Show loading screen while checking for existing session
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
 
   return (
     <Stack.Navigator
