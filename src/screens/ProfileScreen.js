@@ -150,97 +150,33 @@ const SubscriptionManagementSection = () => {
 };
 
 /**
- * Account Deletion Component
+ * Account & Legal Navigation Component
  * 
- * Provides secure account deletion functionality with confirmation flow.
- * Positioned at bottom of profile for Apple App Store compliance.
+ * Provides navigation to the Account & Legal screen where users can
+ * access Terms of Use, Privacy Policy, and account deletion functionality.
  */
-const AccountDeletionSection = () => {
-  const [isDeleting, setIsDeleting] = useState(false);
-  
-  // Handle account deletion with confirmation
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      "Delete Account",
-      "This action cannot be undone. All your golf rounds, insights, and account data will be permanently deleted.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Delete Account",
-          style: "destructive",
-          onPress: confirmDeleteAccount
-        }
-      ]
-    );
-  };
-  
-  // Execute account deletion
-  const confirmDeleteAccount = async () => {
-    setIsDeleting(true);
-    
-    try {
-      // Call the Supabase deletion function
-      const { data, error } = await supabase.rpc('delete_current_user');
-      
-      if (error) {
-        console.error('Account deletion error:', error);
-        Alert.alert(
-          "Deletion Failed", 
-          "Unable to delete your account. Please try again or contact support.",
-          [{ text: "OK" }]
-        );
-        return;
-      }
-      
-      // Check if the function returned an error
-      if (data && !data.success) {
-        console.error('Account deletion function error:', data);
-        Alert.alert(
-          "Deletion Failed", 
-          "Unable to delete your account. Please try again or contact support.",
-          [{ text: "OK" }]
-        );
-        return;
-      }
-      
-      // Success - the user will be automatically signed out due to account deletion
-      // The AuthContext will handle navigation to AuthScreen when user becomes null
-      console.log('Account deleted successfully:', data);
-      
-    } catch (err) {
-      console.error('Account deletion exception:', err);
-      Alert.alert(
-        "Deletion Failed", 
-        "An unexpected error occurred. Please try again or contact support.",
-        [{ text: "OK" }]
-      );
-    } finally {
-      setIsDeleting(false);
-    }
+const AccountLegalNavigationSection = ({ navigation }) => {
+  const handleNavigateToAccountLegal = () => {
+    navigation.navigate('AccountLegal');
   };
   
   return (
-    <Card style={styles.deletionCard}>
+    <Card style={styles.accountLegalCard}>
       <Typography variant="subtitle" style={styles.sectionTitle}>
-        Account Deletion
+        Account
       </Typography>
       
-      <Typography variant="body" style={styles.deletionWarning}>
-        Permanently delete your account and all associated data. This action cannot be undone.
+      <Typography variant="body" style={styles.accountLegalDescription}>
+        Access legal information and account management options.
       </Typography>
       
       <Button
         variant="outline"
-        onPress={handleDeleteAccount}
-        loading={isDeleting}
-        iconLeft="trash-outline"
-        style={styles.deleteButton}
-        textStyle={styles.deleteButtonText}
+        onPress={handleNavigateToAccountLegal}
+        iconRight="chevron-forward-outline"
+        style={styles.accountLegalButton}
       >
-        Delete Account
+        Account & Legal Information
       </Button>
     </Card>
   );
@@ -251,9 +187,9 @@ const AccountDeletionSection = () => {
  * 
  * Enhanced with target handicap functionality for personalized improvement tracking.
  * Features handicap tracking with real-time database synchronization and validation.
- * Now includes secure account deletion functionality for App Store compliance.
+ * Includes navigation to Account & Legal screen for legal information and account management.
  */
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
   // Access authentication context
   const { user, signOut } = useContext(AuthContext);
   
@@ -532,8 +468,8 @@ export default function ProfileScreen() {
           {/* Subscription Management Section */}
           <SubscriptionManagementSection />
           
-          {/* Account Deletion Section - NEW ADDITION */}
-          <AccountDeletionSection />
+          {/* Account & Legal Navigation Section */}
+          <AccountLegalNavigationSection navigation={navigation} />
           
           <View style={styles.spacer} />
           
@@ -684,23 +620,16 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.small,
   },
   
-  // NEW: Account deletion styles
-  deletionCard: {
+  // Account & Legal Navigation styles
+  accountLegalCard: {
     width: "100%", 
     marginTop: theme.spacing.medium,
-    borderColor: "#ffebee", // Light red border for visual distinction
-    borderWidth: 1,
   },
-  deletionWarning: {
+  accountLegalDescription: {
     marginBottom: theme.spacing.medium,
     color: theme.colors.secondary,
-    fontStyle: 'italic',
   },
-  deleteButton: {
-    borderColor: theme.colors.error || '#D32F2F',
-    backgroundColor: 'transparent',
-  },
-  deleteButtonText: {
-    color: theme.colors.error || '#D32F2F',
+  accountLegalButton: {
+    marginTop: theme.spacing.small,
   },
 });

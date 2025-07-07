@@ -11,6 +11,7 @@ import RoundsScreen from "../screens/RoundScreen";
 import ScorecardScreen from "../screens/ScorecardScreen";
 import InsightsScreen from "../screens/InsightsScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import AccountLegalScreen from "../screens/AccountLegalScreen";
 
 // Import authentication context
 import { AuthContext } from "../context/AuthContext";
@@ -64,6 +65,7 @@ function InsightsStackScreen() {
  * ProfileStackScreen Component
  * 
  * Creates a stack navigator for the Profile tab with consistent headers
+ * Includes Account & Legal screen for legal information and account management
  */
 function ProfileStackScreen() {
   return (
@@ -72,6 +74,11 @@ function ProfileStackScreen() {
         name="ProfileScreen" 
         component={ProfileScreen}
         options={{ title: "Your Profile" }}
+      />
+      <ProfileStack.Screen 
+        name="AccountLegal" 
+        component={AccountLegalScreen}
+        options={{ title: "Account & Legal" }}
       />
     </ProfileStack.Navigator>
   );
