@@ -6,7 +6,7 @@
     "version": "1.1.19",
     "orientation": "portrait",
     "sdkVersion": "52.0.0",
-    "extra": {
+    "extra": {e
       "eas": {
         "projectId": "f533582e-60df-40c6-94a0-cb0d233655f5"
       },

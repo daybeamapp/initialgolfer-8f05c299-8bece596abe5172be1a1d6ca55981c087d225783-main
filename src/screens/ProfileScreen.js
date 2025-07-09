@@ -31,6 +31,46 @@ import debounce from 'lodash/debounce';
 const SubscriptionManagementSection = () => {
   const { user, hasPermission } = useContext(AuthContext);
   const isPremium = hasPermission("product_a");
+  const [pricingInfo, setPricingInfo] = useState(null);
+  const [loadingPricing, setLoadingPricing] = useState(false);
+  
+  // Load pricing information from RevenueCat
+  useEffect(() => {
+    const loadPricingInfo = async () => {
+      if (isPremium) return; // Don't load pricing for premium users
+      
+      try {
+        setLoadingPricing(true);
+        const { default: purchaseService } = await import('../services/purchaseService');
+        
+        if (!purchaseService.isPurchasesReady()) return;
+        
+        const offerings = await purchaseService.getOfferings();
+        
+        // Find the product in offerings
+        const expectedProductId = Platform.OS === 'ios' ? 'product_a' : 'product_a';
+        let productPrice = null;
+        
+        Object.values(offerings.all).forEach(offering => {
+          offering.availablePackages.forEach(pkg => {
+            if (pkg.product.identifier === expectedProductId) {
+              // Format price to clearly show it's a monthly subscription
+              const basePrice = pkg.product.priceString;
+              productPrice = basePrice ? `${basePrice}/month` : null;
+            }
+          });
+        });
+        
+        setPricingInfo(productPrice);
+      } catch (error) {
+        console.error('Error loading pricing:', error);
+      } finally {
+        setLoadingPricing(false);
+      }
+    };
+    
+    loadPricingInfo();
+  }, [isPremium]);
   
   // Handle successful purchase completion
   const handlePurchaseComplete = (result) => {
@@ -98,19 +138,11 @@ const SubscriptionManagementSection = () => {
       ) : (
         // Non-subscriber view with purchase option
         <View>
-          <Typography variant="body" style={styles.standardText}>
-            You're currently using the standard version
+          <Typography variant="body" style={styles.upgradeDescription}>
+            Upgrade to unlock premium features:
           </Typography>
           
-          {/* 
-            ===== VALUE PROPOSITION SECTION - CUSTOMIZE THIS =====
-            Edit this section to adjust the premium benefits messaging
-          */}
           <View style={styles.benefitsContainer}>
-            <Typography variant="body" weight="semibold" style={styles.benefitsTitle}>
-              Premium benefits include:
-            </Typography>
-            
             <View style={styles.benefitItem}>
               <Typography variant="body" style={styles.benefitText}>
                 • Personalized shot analysis and recommendations
@@ -135,7 +167,20 @@ const SubscriptionManagementSection = () => {
               </Typography>
             </View>
           </View>
-          {/* ===== END VALUE PROPOSITION SECTION ===== */}
+          
+          {/* Price Display - Right before purchase button */}
+          <View style={styles.priceHeader}>
+            {pricingInfo && (
+              <Typography variant="title" weight="bold" style={styles.priceText}>
+                {pricingInfo}
+              </Typography>
+            )}
+            {loadingPricing && (
+              <Typography variant="body" style={styles.priceLoadingText}>
+                Loading price...
+              </Typography>
+            )}
+          </View>
           
           <PremiumButton
             label="Upgrade to Premium"
@@ -143,6 +188,13 @@ const SubscriptionManagementSection = () => {
             onPurchaseFailed={handlePurchaseFailed}
             style={styles.upgradeButton}
           />
+          
+          {/* Apple Required Legal Text */}
+          <View style={styles.legalTextContainer}>
+            <Typography variant="caption" style={styles.legalText}>
+              Payment will be charged to your Apple ID account at the confirmation of purchase. Subscription automatically renews unless it is canceled at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. Subscriptions may be managed by the user and auto-renewal may be turned off by going to the user's Account Settings after purchase.
+            </Typography>
+          </View>
         </View>
       )}
     </Card>
@@ -601,17 +653,49 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.medium,
     color: theme.colors.secondary,
   },
-  benefitsContainer: {
+  pricingContainer: {
     marginBottom: theme.spacing.medium,
   },
-  benefitsTitle: {
+  upgradeDescription: {
     marginBottom: theme.spacing.small,
+    color: theme.colors.text,
+    fontWeight: theme.typography.fontWeight.medium,
+  },
+  priceHeader: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.medium,
+  },
+  pricingTitle: {
+    marginBottom: theme.spacing.small,
+  },
+  priceText: {
+    fontSize: 24,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.small,
+  },
+  priceLoadingText: {
+    color: theme.colors.secondary,
+    fontStyle: 'italic',
+  },
+  benefitsContainer: {
+    marginBottom: theme.spacing.medium,
   },
   benefitItem: {
     marginBottom: 4,
   },
   benefitText: {
     color: theme.colors.secondary,
+  },
+  legalTextContainer: {
+    marginTop: theme.spacing.medium,
+    padding: theme.spacing.small,
+    backgroundColor: '#f8f9fa',
+    borderRadius: theme.layout.borderRadius.small,
+  },
+  legalText: {
+    color: theme.colors.secondary,
+    lineHeight: 16,
+    fontSize: 11,
   },
   manageButton: {
     marginTop: theme.spacing.medium,
